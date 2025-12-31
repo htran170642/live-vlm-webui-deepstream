@@ -1,0 +1,78 @@
+# docker-compose.yml - Simple VLM FastAPI stack
+version: '3.8'
+
+services:
+  # Redis server
+  redis:
+    image: redis:7-alpine
+    container_name: vlm-redis-simple
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --bind 0.0.0.0
+      --protected-mode no
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - vlm-network
+
+  # Simple FastAPI WebSocket service
+  vlm-api:
+    build:
+      context: server
+      dockerfile: ./Dockerfile
+    container_name: vlm-fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - vlm-network
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Commander - Web UI for Redis (optional)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: vlm-redis-ui
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin
+    networks:
+      - vlm-network
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
+
+networks:
+  vlm-network:
+    driver: bridge
+
+# Usage:
+# docker-compose -f docker-compose.simple.yml up -d
+# 
+# Services:
+# - Redis: localhost:6379
+# - Simple API: http://localhost:8000
+# - API Docs: http://localhost:8000/docs
+# - WebSocket: ws://localhost:8000/ws
+# - Redis UI: http://localhost:8081 (admin/admin)
+#
+# Simple structure: models.py (3 models) + websocket_manager.py + api.py (3 endpoints)
