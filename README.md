@@ -50,6 +50,15 @@ RTSP Streams → DeepStream Pipeline → VLM Processing → WebSocket → Dashbo
 Video Files → Object Detection → AI Analysis → Real-time → Browser UI
 ```
 
+### Future works
+#### Your real-time flow NEVER stops
+```
+Redis Stream → Parse VLM → Enqueue (0.5ms) → WebSocket Broadcast
+                                 ↓
+                           Background Worker → Database (batched)
+
+```
+
 ## Requirements
 
 - **DeepStream SDK 7.0+** - NVIDIA video analytics
